@@ -14,6 +14,8 @@ const navItems = [
   { to: "/dashboard/analytics", label: "Analytics", icon: ChartBarIcon },
   { to: "/dashboard/appearance", label: "Appearance", icon: PaintBrushIcon },
   { to: "/dashboard/settings", label: "Settings", icon: Cog6ToothIcon },
+  { to: "/dashboard/public-profile", label: "Public Profile", icon: UserGroupIcon },
+
   // divider
   { to: "#", label: "Links & Integrations", icon: LinkIcon, divider: true },
   // { to: "#", label: "Audience", icon: UserGroupIcon }, // future

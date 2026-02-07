@@ -26,6 +26,7 @@ import PublicLayout from "./components/layout/PublicLayout";
 import AppearancePage from "./features/profile/dashboard/AppearancePage";
 import SettingsPage from "./features/profile/dashboard/SettingsPage";
 import OnboardingProfileSetup from "./features/profile/dashboard/OnboardingProfileSetup";
+import PublicProfileSettings from "./features/profile/dashboard/PublicProfileSettings";
 
 function App() {
   return (
@@ -52,6 +53,7 @@ function App() {
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="appearance" element={<AppearancePage />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="public-profile" element={<PublicProfileSettings />} />
 
             {/* Onboarding – only shown to new users */}
             <Route path="onboarding" element={<OnboardingProfileSetup />} />

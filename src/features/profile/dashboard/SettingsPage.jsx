@@ -4,46 +4,10 @@ export default function SettingsPage() {
     <div className="p-6 lg:p-8 max-w-4xl">
       <h1 className="text-2xl font-bold mb-1">Settings</h1>
       <p className="text-gray-600 mb-10">
-        Manage your account, profile information, payments and security
+        Manage your account, payments information
       </p>
 
       <div className="space-y-12 divide-y">
-        {/* Profile */}
-        <section className="pb-10">
-          <h2 className="text-xl font-semibold mb-6">Profile Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium mb-2">Display Name</label>
-              <input
-                type="text"
-                defaultValue="Tanvi Rateria"
-                className="w-full border rounded-lg px-4 py-2.5"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Username / Slug</label>
-              <div className="flex">
-                <span className="inline-flex items-center px-3 bg-gray-100 border border-r-0 rounded-l-lg text-gray-500">
-                  superprofile.bio/
-                </span>
-                <input
-                  type="text"
-                  defaultValue="tanvirateria"
-                  className="flex-1 border rounded-r-lg px-4 py-2.5"
-                />
-              </div>
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-2">Bio / Tagline</label>
-              <textarea
-                rows={3}
-                defaultValue="Manifest Love & Commitment with Tanvi! ✨ Helping you call in your soulmate with love, energy & mindset work"
-                className="w-full border rounded-lg px-4 py-2.5"
-              />
-            </div>
-          </div>
-        </section>
-
         {/* Account */}
         <section className="py-10">
           <h2 className="text-xl font-semibold mb-6">Account</h2>
@@ -63,7 +27,7 @@ export default function SettingsPage() {
                 <p className="text-sm text-gray-500">Add extra security to your account</p>
               </div>
               <button className="px-5 py-2 border rounded-lg hover:bg-gray-50">
-                Enable 2FA
+                Coming soon
               </button>
             </div>
           </div>

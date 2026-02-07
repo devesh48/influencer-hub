@@ -1,5 +1,5 @@
 // src/components/layout/DashboardLayout.jsx
-import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate, Link } from "react-router-dom";
 import { useUser } from "@clerk/clerk-react";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
@@ -11,8 +11,6 @@ export default function DashboardLayout() {
   const { user, isLoaded } = useUser();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const username =
-    user?.username || user?.firstName?.toLowerCase() || "creator";
 
   useEffect(() => {
     if (!isLoaded || !user) return;
@@ -53,8 +51,8 @@ export default function DashboardLayout() {
         </main>
       </div>
 
-      <MobileSidebar 
-        isOpen={isMobileMenuOpen} 
+      <MobileSidebar
+        isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
       />
     </div>

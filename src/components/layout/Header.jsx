@@ -1,11 +1,51 @@
 // src/components/layout/Header.jsx
-import { Link } from 'react-router-dom';
-import { UserButton, useUser } from '@clerk/clerk-react';
-import { ArrowLeftIcon, Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
+import { Link } from "react-router-dom";
+import { UserButton, useUser } from "@clerk/clerk-react";
+import {
+  ArrowLeftIcon,
+  Bars3Icon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
+import { useSupabase } from "../../contexts/SupabaseContext";
+import { useState, useEffect } from "react";
 
 export default function Header({ onMobileMenuToggle, isMobileMenuOpen }) {
   const { user } = useUser();
-  const username = user?.username || user?.firstName?.toLowerCase() || 'creator';
+  const { supabaseAuth, loading: authLoading } = useSupabase();
+
+  const [dbUsername, setDbUsername] = useState(null);
+  const [fetchingUsername, setFetchingUsername] = useState(true);
+
+  // Fetch username from DB only once when component mounts or auth changes
+  useEffect(() => {
+    if (!user?.id || !supabaseAuth || authLoading) return;
+
+    async function fetchUsername() {
+      setFetchingUsername(true);
+      try {
+        const { data, error } = await supabaseAuth
+          .from("profiles")
+          .select("username")
+          .eq("id", user.id)
+          .single();
+
+        if (error) throw error;
+        setDbUsername(data?.username || null);
+      } catch (err) {
+        console.error("Failed to fetch username from DB:", err);
+      } finally {
+        setFetchingUsername(false);
+      }
+    }
+
+    fetchUsername();
+  }, [user?.id, supabaseAuth, authLoading]);
+
+  // Use DB value first, fall back to Clerk metadata if DB fetch hasn't completed
+  const publicUsername =
+    dbUsername || user?.publicMetadata?.username || "profile";
+
+  const hasPublicPage = !!publicUsername && publicUsername !== "profile";
 
   return (
     <header className="bg-white border-b shadow-sm sticky top-0 z-20">
@@ -27,17 +67,32 @@ export default function Header({ onMobileMenuToggle, isMobileMenuOpen }) {
 
           {/* Right side */}
           <div className="flex items-center gap-4 sm:gap-6">
+            {/* View public page – always prefers DB username */}
             <a
-              href={`/${username}`}
-              target="_blank"
+              href={hasPublicPage ? `/${publicUsername}` : "#"}
+              target={hasPublicPage ? "_blank" : undefined}
               rel="noopener noreferrer"
-              className="text-sm text-purple-600 hover:text-purple-800 sm:flex items-center gap-1.5"
-              // className="text-gray-700 hover:text-purple-600 transition-colors group"
-              title="View your public page">
-              <span className="hidden sm:inline ml-1.5">View public page</span>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
+              className={`flex items-center gap-1.5 transition-colors ${
+                hasPublicPage
+                  ? "text-purple-600 hover:text-purple-800"
+                  : "text-gray-400 cursor-not-allowed"
+              }`}
+              title={
+                hasPublicPage
+                  ? "View your public page"
+                  : fetchingUsername
+                    ? "Loading your profile..."
+                    : "Complete your profile setup first"
+              }
+              onClick={!hasPublicPage ? (e) => e.preventDefault() : undefined}
+            >
+              <span className="hidden sm:inline text-sm font-medium">
+                {fetchingUsername
+                  ? 'Loading...'
+                  : hasPublicPage
+                  ? 'View public page'
+                  : 'Public page (setup required)'}
+              </span>
             </a>
 
             {/* Hamburger button – visible only on mobile */}
@@ -59,7 +114,7 @@ export default function Header({ onMobileMenuToggle, isMobileMenuOpen }) {
                 elements: {
                   avatarBox: "w-9 h-9",
                   userPreviewMainIdentifier: "font-medium",
-                }
+                },
               }}
             />
           </div>
