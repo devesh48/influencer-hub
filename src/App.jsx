@@ -1,35 +1,29 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import PublicProfilePage from './features/profile/public/PublicProfilePage';
+import DashboardLayout from './components/layout/DashboardLayout';
+import StorePage from './features/profile/dashboard/StorePage';
+import AnalyticsPage from './features/profile/dashboard/AnalyticsPage';
+import NotFound from './pages/NotFound';
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <BrowserRouter>
+      <Routes>
+        {/* Public facing link-in-bio style page */}
+        <Route path="/:username" element={<PublicProfilePage />} />
+
+        {/* Creator dashboard – protected in real app */}
+        <Route path="/dashboard" element={<DashboardLayout />}>
+          <Route index element={<StorePage />} />
+          <Route path="analytics" element={<AnalyticsPage />} />
+          <Route path="appearance" element={<div>Appearance editor (todo)</div>} />
+          <Route path="settings" element={<div>Settings (todo)</div>} />
+        </Route>
+
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;
