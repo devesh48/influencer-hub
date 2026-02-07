@@ -29,12 +29,6 @@ export default function Home() {
             ) : (
               <>
                 <Link
-                  to="/sign-in"
-                  className="px-5 py-2.5 text-gray-700 hover:text-purple-700 font-medium transition"
-                >
-                  Sign In
-                </Link>
-                <Link
                   to="/sign-up"
                   className="px-6 py-2.5 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition shadow-sm"
                 >
