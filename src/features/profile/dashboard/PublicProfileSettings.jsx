@@ -7,7 +7,7 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 export default function PublicProfileSettings() {
   const { user } = useUser();
   const { supabaseAuth } = useSupabase();
-  const [showAvatarModal, setShowAvatarModal] = useState(false);
+
   const [formData, setFormData] = useState({
     display_name: "",
     bio: "",
@@ -23,6 +23,7 @@ export default function PublicProfileSettings() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
   const fileInputRef = useRef(null);
   const [previewUrl, setPreviewUrl] = useState(null);
 
@@ -69,65 +70,58 @@ export default function PublicProfileSettings() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Avatar file selection + preview
-  const handleAvatarChange = (e) => {
-    const file = e.target.files?.[0];
+  // Avatar selection → compress → preview → upload
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0] || e.dataTransfer?.files?.[0];
     if (!file) return;
 
-    // Validate file type & size
+    // Validate
     if (!file.type.startsWith("image/")) {
       setError("Please select an image file");
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      // 5MB limit
       setError("Image must be under 5MB");
-      return;
-    }
-
-    // Show local preview immediately
-    const reader = new FileReader();
-    reader.onload = () => setPreviewUrl(reader.result);
-    reader.readAsDataURL(file);
-
-    // Upload
-    uploadAvatar(file);
-  };
-
-  const uploadAvatar = async (file) => {
-    if (!supabaseAuth) {
-      setError("Storage not ready");
       return;
     }
 
     setUploadingAvatar(true);
     setUploadProgress(0);
     setError("");
-    setSuccess("");
 
     try {
-      const fileExt = file.name.split(".").pop();
+      // Compress & resize (client-side)
+      const compressedFile = await compressAndResizeImage(file, 400, 400, 0.7);
+
+      // Local preview
+      const reader = new FileReader();
+      reader.onload = () => setPreviewUrl(reader.result);
+      reader.readAsDataURL(compressedFile);
+
+      // Upload
+      const fileExt = compressedFile.name.split(".").pop();
       const fileName = `${user.id}-${Date.now()}.${fileExt}`;
       const filePath = `avatars/${fileName}`;
 
+      const bucketName = import.meta.env.VITE_SUPABASE_AVATARS_BUCKET || 'avatars';
+
       const { error: uploadError } = await supabaseAuth.storage
-        .from("avatars") // your bucket name
-        .upload(filePath, file, {
+        .from(bucketName)
+        .upload(filePath, compressedFile, {
           cacheControl: "3600",
           upsert: true,
-          contentType: file.type,
         });
 
       if (uploadError) throw uploadError;
 
       // Get public URL
       const { data: urlData } = supabaseAuth.storage
-        .from("avatars")
+        .from(bucketName)
         .getPublicUrl(filePath);
 
       const publicUrl = urlData.publicUrl;
 
-      // Save URL to profiles
+      // Save to profiles
       const { error: updateError } = await supabaseAuth
         .from("profiles")
         .update({ avatar_url: publicUrl })
@@ -135,10 +129,10 @@ export default function PublicProfileSettings() {
 
       if (updateError) throw updateError;
 
-      // Update local state
       setFormData((prev) => ({ ...prev, avatar_url: publicUrl }));
       setPreviewUrl(publicUrl);
-      setSuccess("Avatar uploaded successfully!");
+      setSuccess("Avatar uploaded & optimized!");
+      setShowAvatarModal(false);
     } catch (err) {
       console.error("Avatar upload failed:", err);
       setError(err.message || "Failed to upload avatar");
@@ -146,6 +140,52 @@ export default function PublicProfileSettings() {
       setUploadingAvatar(false);
       setUploadProgress(0);
     }
+  };
+
+  // Compress & resize helper
+  const compressAndResizeImage = (file, maxWidth = 400, maxHeight = 400, quality = 0.7) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height *= maxWidth / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width *= maxHeight / height;
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) return reject(new Error("Compression failed"));
+            const compressedFile = new File([blob], file.name, {
+              type: "image/jpeg",
+              lastModified: Date.now(),
+            });
+            resolve(compressedFile);
+          },
+          "image/jpeg",
+          quality
+        );
+      };
+
+      img.onerror = reject;
+    });
   };
 
   const handleSave = async (e) => {
@@ -203,32 +243,28 @@ export default function PublicProfileSettings() {
           )}
 
           <form onSubmit={handleSave} className="space-y-6">
-            {/* Avatar Upload */}
-            {/* Avatar Upload with Pencil Icon + Modal */}
-            <div className="relative w-24 h-24 mx-auto mb-8">
+            {/* Avatar with Pencil Icon */}
+            <div className="relative w-32 h-32 mx-auto mb-8 group">
               <img
                 src={
                   previewUrl ||
                   formData.avatar_url ||
-                  `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.display_name || "User")}&size=128`
+                  `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                    formData.display_name || "User"
+                  )}&size=128`
                 }
-                alt="Profile preview"
-                className="w-full h-full rounded-full object-cover border-4 border-gray-200 shadow-md"
+                alt="Profile"
+                className="w-full h-full rounded-full object-cover border-4 border-gray-200 shadow-xl"
               />
 
-              {/* Pencil icon overlay */}
+              {/* Pencil button */}
               <button
                 type="button"
                 onClick={() => setShowAvatarModal(true)}
-                className="absolute bottom-0 right-0 bg-purple-600 text-white p-2 rounded-full shadow-lg hover:bg-purple-700 transition transform hover:scale-110"
-                title="Change profile picture"
+                className="absolute bottom-0 right-0 bg-purple-600 text-white p-2.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-purple-700"
+                title="Change avatar"
               >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -238,139 +274,6 @@ export default function PublicProfileSettings() {
                 </svg>
               </button>
             </div>
-
-            {/* Modal for avatar upload */}
-            {showAvatarModal && (
-              <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
-                  {/* Modal header */}
-                  <div className="flex items-center justify-between p-6 border-b">
-                    <h3 className="text-xl font-semibold">
-                      Change Profile Picture
-                    </h3>
-                    <button
-                      onClick={() => {
-                        setShowAvatarModal(false);
-                        setUploadProgress(0);
-                        setUploadingAvatar(false);
-                      }}
-                      className="text-gray-500 hover:text-gray-700"
-                    >
-                      <XMarkIcon className="w-7 h-7" />
-                    </button>
-                  </div>
-
-                  {/* Modal body */}
-                  <div className="p-6">
-                    {/* Drag & drop area */}
-                    <div
-                      className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all ${
-                        uploadingAvatar
-                          ? "border-purple-500 bg-purple-50"
-                          : "border-gray-300 hover:border-purple-400 hover:bg-purple-50/30"
-                      }`}
-                      onClick={() => fileInputRef.current?.click()}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        const file = e.dataTransfer.files[0];
-                        if (file)
-                          handleAvatarChange({ target: { files: [file] } });
-                      }}
-                    >
-                      <div className="mx-auto w-16 h-16 mb-4 text-purple-500">
-                        {uploadingAvatar ? (
-                          <svg className="animate-spin" viewBox="0 0 24 24">
-                            <circle
-                              cx="12"
-                              cy="12"
-                              r="10"
-                              stroke="currentColor"
-                              strokeWidth="4"
-                              fill="none"
-                            />
-                          </svg>
-                        ) : (
-                          <svg
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                            />
-                          </svg>
-                        )}
-                      </div>
-
-                      <p className="text-lg font-medium text-gray-700 mb-1">
-                        {uploadingAvatar
-                          ? "Uploading..."
-                          : "Drag & drop your image here"}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        or{" "}
-                        <span className="text-purple-600 font-medium">
-                          click to browse
-                        </span>
-                      </p>
-                      <p className="text-xs text-gray-400 mt-2">
-                        PNG, JPG, WebP • Max 5MB
-                      </p>
-
-                      {/* Progress bar */}
-                      {uploadingAvatar && (
-                        <div className="mt-6">
-                          <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                            <div
-                              className="bg-purple-600 h-2.5 rounded-full transition-all duration-300 ease-out"
-                              style={{ width: `${uploadProgress}%` }}
-                            />
-                          </div>
-                          <p className="text-sm text-gray-600 mt-2">
-                            {uploadProgress}%
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleAvatarChange}
-                      className="hidden"
-                    />
-                  </div>
-
-                  {/* Modal footer */}
-                  <div className="flex justify-end gap-4 px-6 py-4 border-t bg-gray-50">
-                    <button
-                      type="button"
-                      onClick={() => setShowAvatarModal(false)}
-                      className="px-6 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowAvatarModal(false)}
-                      disabled={uploadingAvatar}
-                      className={`px-6 py-2.5 text-white rounded-lg transition ${
-                        uploadingAvatar
-                          ? "bg-gray-400 cursor-not-allowed"
-                          : "bg-purple-600 hover:bg-purple-700"
-                      }`}
-                    >
-                      Done
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Display Name */}
             <div>
@@ -406,9 +309,7 @@ export default function PublicProfileSettings() {
                 Instagram Handle
               </label>
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">
-                  @
-                </span>
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">@</span>
                 <input
                   type="text"
                   name="instagram"
@@ -491,6 +392,100 @@ export default function PublicProfileSettings() {
           </div>
         </div>
       </div>
+
+      {/* Modal for avatar upload */}
+      {showAvatarModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <h3 className="text-xl font-bold">Upload Profile Picture</h3>
+              <button
+                onClick={() => setShowAvatarModal(false)}
+                className="text-gray-500 hover:text-gray-800"
+              >
+                <XMarkIcon className="w-7 h-7" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6">
+              <div
+                className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all ${
+                  uploadingAvatar ? "border-purple-500 bg-purple-50" : "border-gray-300 hover:border-purple-400 hover:bg-purple-50/50"
+                }`}
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const file = e.dataTransfer.files[0];
+                  if (file) handleAvatarChange({ target: { files: [file] } });
+                }}
+              >
+                <div className="mx-auto w-20 h-20 mb-6 text-purple-500">
+                  {uploadingAvatar ? (
+                    <svg className="animate-spin" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    </svg>
+                  ) : (
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                  )}
+                </div>
+
+                <p className="text-xl font-medium text-gray-800 mb-2">
+                  {uploadingAvatar ? "Uploading..." : "Drag & drop your image here"}
+                </p>
+                <p className="text-gray-600 mb-1">or</p>
+                <p className="text-purple-600 font-medium">click to select file</p>
+                <p className="text-sm text-gray-500 mt-4">PNG, JPG, WebP • Max 5MB</p>
+
+                {uploadingAvatar && (
+                  <div className="mt-8">
+                    <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                      <div
+                        className="bg-purple-600 h-2.5 rounded-full transition-all duration-300 ease-out"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                    <p className="text-center text-sm text-gray-600 mt-2">{uploadProgress}% complete</p>
+                  </div>
+                )}
+              </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                className="hidden"
+              />
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-4 px-6 py-4 border-t bg-gray-50">
+              <button
+                type="button"
+                onClick={() => setShowAvatarModal(false)}
+                className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAvatarModal(false)}
+                disabled={uploadingAvatar}
+                className={`px-6 py-3 text-white rounded-lg transition ${
+                  uploadingAvatar ? "bg-gray-400 cursor-not-allowed" : "bg-purple-600 hover:bg-purple-700"
+                }`}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
