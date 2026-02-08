@@ -1,8 +1,9 @@
-// src/features/profile/dashboard/PublicProfileSettings.jsx
+// src/features/profile/dashboard/PublicProfileSettings.tsx
 import { useState, useEffect, useRef } from "react";
 import { useUser } from "@clerk/clerk-react";
 import { useSupabase } from "../../../contexts/SupabaseContext";
 import { XMarkIcon } from "@heroicons/react/24/outline";
+import GoogleCalendarConnect from "../dashboard/GoogleCalenderConnect";  // ← Import here
 
 export default function PublicProfileSettings() {
   const { user } = useUser();
@@ -26,6 +27,10 @@ export default function PublicProfileSettings() {
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const fileInputRef = useRef(null);
   const [previewUrl, setPreviewUrl] = useState(null);
+
+  // Google Calendar connection status
+  const [isGoogleConnected, setIsGoogleConnected] = useState(false);
+  const [checkingConnection, setCheckingConnection] = useState(true);
 
   // Load current profile
   useEffect(() => {
@@ -65,6 +70,28 @@ export default function PublicProfileSettings() {
     loadProfile();
   }, [supabaseAuth, user]);
 
+  // Check Google Calendar connection
+  useEffect(() => {
+    async function checkGoogleConnection() {
+      if (!supabaseAuth || !user?.id) return;
+
+      const { data, error } = await supabaseAuth
+        .from("google_tokens")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Check connection error:", error);
+      } else {
+        setIsGoogleConnected(!!data);
+      }
+      setCheckingConnection(false);
+    }
+
+    checkGoogleConnection();
+  }, [supabaseAuth, user?.id]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -103,7 +130,8 @@ export default function PublicProfileSettings() {
       const fileName = `${user.id}-${Date.now()}.${fileExt}`;
       const filePath = `avatars/${fileName}`;
 
-      const bucketName = import.meta.env.VITE_SUPABASE_AVATARS_BUCKET || 'avatars';
+      const bucketName =
+        import.meta.env.VITE_SUPABASE_AVATARS_BUCKET || "creatorHub-bucket";
 
       const { error: uploadError } = await supabaseAuth.storage
         .from(bucketName)
@@ -143,7 +171,12 @@ export default function PublicProfileSettings() {
   };
 
   // Compress & resize helper
-  const compressAndResizeImage = (file, maxWidth = 400, maxHeight = 400, quality = 0.7) => {
+  const compressAndResizeImage = (
+    file,
+    maxWidth = 400,
+    maxHeight = 400,
+    quality = 0.7,
+  ) => {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.src = URL.createObjectURL(file);
@@ -180,7 +213,7 @@ export default function PublicProfileSettings() {
             resolve(compressedFile);
           },
           "image/jpeg",
-          quality
+          quality,
         );
       };
 
@@ -249,9 +282,7 @@ export default function PublicProfileSettings() {
                 src={
                   previewUrl ||
                   formData.avatar_url ||
-                  `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                    formData.display_name || "User"
-                  )}&size=128`
+                  `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.display_name || "User")}&size=128`
                 }
                 alt="Profile"
                 className="w-full h-full rounded-full object-cover border-4 border-gray-200 shadow-xl"
@@ -264,7 +295,12 @@ export default function PublicProfileSettings() {
                 className="absolute bottom-0 right-0 bg-purple-600 text-white p-2.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-purple-700"
                 title="Change avatar"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -336,6 +372,46 @@ export default function PublicProfileSettings() {
               <p className="mt-1 text-xs text-gray-500">
                 Example: from-indigo-600 to-purple-600
               </p>
+            </div>
+
+            {/* Google Calendar Connection Status */}
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
+              <h3 className="text-lg font-semibold mb-4">
+                1:1 Session Booking (Google Calendar)
+              </h3>
+
+              {checkingConnection ? (
+                <div className="text-gray-500">Checking connection...</div>
+              ) : isGoogleConnected ? (
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                    <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                    Google Calendar Connected
+                  </span>
+                  <button
+                    onClick={async () => {
+                      if (confirm("Disconnect Google Calendar?")) {
+                        await supabaseAuth
+                          .from("google_tokens")
+                          .delete()
+                          .eq("user_id", user.id);
+                        setIsGoogleConnected(false);
+                      }
+                    }}
+                    className="text-sm text-red-600 hover:text-red-800 underline"
+                  >
+                    Disconnect
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-gray-600 mb-4">
+                    Connect your Google Calendar to let followers book 1:1 sessions directly.
+                  </p>
+                  {/* Import and use the component here */}
+                  <GoogleCalendarConnect />
+                </div>
+              )}
             </div>
 
             <div className="pt-6">
@@ -412,7 +488,9 @@ export default function PublicProfileSettings() {
             <div className="p-6">
               <div
                 className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all ${
-                  uploadingAvatar ? "border-purple-500 bg-purple-50" : "border-gray-300 hover:border-purple-400 hover:bg-purple-50/50"
+                  uploadingAvatar
+                    ? "border-purple-500 bg-purple-50"
+                    : "border-gray-300 hover:border-purple-400 hover:bg-purple-50/50"
                 }`}
                 onClick={() => fileInputRef.current?.click()}
                 onDragOver={(e) => e.preventDefault()}
@@ -425,11 +503,23 @@ export default function PublicProfileSettings() {
                 <div className="mx-auto w-20 h-20 mb-6 text-purple-500">
                   {uploadingAvatar ? (
                     <svg className="animate-spin" viewBox="0 0 24 24">
-                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                        fill="none"
+                      />
                     </svg>
                   ) : (
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                      />
                     </svg>
                   )}
                 </div>
@@ -439,7 +529,9 @@ export default function PublicProfileSettings() {
                 </p>
                 <p className="text-gray-600 mb-1">or</p>
                 <p className="text-purple-600 font-medium">click to select file</p>
-                <p className="text-sm text-gray-500 mt-4">PNG, JPG, WebP • Max 5MB</p>
+                <p className="text-sm text-gray-500 mt-4">
+                  PNG, JPG, WebP • Max 5MB
+                </p>
 
                 {uploadingAvatar && (
                   <div className="mt-8">
@@ -449,7 +541,9 @@ export default function PublicProfileSettings() {
                         style={{ width: `${uploadProgress}%` }}
                       />
                     </div>
-                    <p className="text-center text-sm text-gray-600 mt-2">{uploadProgress}% complete</p>
+                    <p className="text-center text-sm text-gray-600 mt-2">
+                      {uploadProgress}% complete
+                    </p>
                   </div>
                 )}
               </div>

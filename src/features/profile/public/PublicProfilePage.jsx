@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom';
 import { useSupabase } from '../../../contexts/SupabaseContext';
 import TestimonialBlock from '../../../components/store/TestimonialBlock';
 import ProductCard from '../../../components/store/ProductCard';
+import SessionBookingCards from "../../../components/store/SessionBookingCards";
 
 export default function PublicProfilePage() {
   const { username } = useParams();
@@ -176,6 +177,9 @@ export default function PublicProfilePage() {
             </div>
           </div>
         )}
+
+        {/* Session Booking */}
+        <SessionBookingCards profileId={profile.id} />
 
         {/* Final CTA */}
         <div className="mt-20 text-center">

@@ -28,6 +28,7 @@ import SettingsPage from "./features/profile/dashboard/SettingsPage";
 import OnboardingProfileSetup from "./features/profile/dashboard/OnboardingProfileSetup";
 import PublicProfileSettings from "./features/profile/dashboard/PublicProfileSettings";
 import GoogleCalendarConnect from "./features/profile/dashboard/GoogleCalenderConnect";
+import SessionTypesManager from "./features/profile/dashboard/SessionTypeManager";
 
 function App() {
   return (
@@ -56,6 +57,7 @@ function App() {
             <Route path="settings" element={<SettingsPage />} />
             <Route path="public-profile" element={<PublicProfileSettings />} />
             <Route path="/dashboard/google-connect" element={<GoogleCalendarConnect />} />
+            <Route path="/dashboard/session-types" element={<SessionTypesManager />} />
             {/* Onboarding – only shown to new users */}
             <Route path="onboarding" element={<OnboardingProfileSetup />} />
           </Route>
