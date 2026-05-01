@@ -1,0 +1,66 @@
+version: 2
+
+updates:
+  # npm dependencies
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Kolkata
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      # Group minor/patch updates for Clerk together
+      clerk:
+        patterns:
+          - "@clerk/*"
+        update-types:
+          - minor
+          - patch
+      # Group Supabase updates
+      supabase:
+        patterns:
+          - "@supabase/*"
+        update-types:
+          - minor
+          - patch
+      # Group all UI/Tailwind dependencies
+      ui:
+        patterns:
+          - "@headlessui/*"
+          - "@heroicons/*"
+          - "tailwindcss"
+          - "postcss"
+          - "autoprefixer"
+        update-types:
+          - minor
+          - patch
+      # Group chart dependencies
+      charts:
+        patterns:
+          - "chart.js"
+          - "react-chartjs-2"
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # Don't auto-update major React versions — they require manual testing
+      - dependency-name: react
+        update-types: ["version-update:semver-major"]
+      - dependency-name: react-dom
+        update-types: ["version-update:semver-major"]
+      - dependency-name: react-router-dom
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: chore
+      include: scope

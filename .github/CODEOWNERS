@@ -1,0 +1,17 @@
+# CODEOWNERS
+# Each line is a file pattern followed by one or more owners.
+# The last matching pattern takes precedence.
+# Owners are automatically requested for review when a PR touches their files.
+#
+# Replace YOUR_GITHUB_USERNAME with your actual GitHub username.
+
+# Default owner for everything
+* @YOUR_GITHUB_USERNAME
+
+# CI / deployment config — review carefully before merging
+.github/workflows/ @YOUR_GITHUB_USERNAME
+
+# Auth and database — high-risk changes
+src/contexts/           @YOUR_GITHUB_USERNAME
+src/lib/supabaseClient.js @YOUR_GITHUB_USERNAME
+INSTRUCTIONS.md          @YOUR_GITHUB_USERNAME
