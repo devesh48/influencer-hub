@@ -3,16 +3,14 @@ import { NavLink } from 'react-router-dom';
 import {
   HomeIcon,
   ChartBarIcon,
-  PaintBrushIcon,
   Cog6ToothIcon,
   LinkIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 
 const navItems = [
-  { to: "/dashboard", label: "Store", icon: HomeIcon },
+  { to: "/dashboard", label: "Offers", icon: HomeIcon },
   { to: "/dashboard/analytics", label: "Analytics", icon: ChartBarIcon },
-  { to: "/dashboard/appearance", label: "Appearance", icon: PaintBrushIcon },
   { to: "/dashboard/settings", label: "Settings", icon: Cog6ToothIcon },
   { to: "#", label: "Links & Integrations", icon: LinkIcon, divider: true },
 ];

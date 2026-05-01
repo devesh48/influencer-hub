@@ -23,7 +23,6 @@ import StorePage from "./features/profile/dashboard/StorePage";
 import AnalyticsPage from "./features/profile/dashboard/AnalyticsPage";
 import NotFound from "./pages/NotFound";
 import PublicLayout from "./components/layout/PublicLayout";
-import AppearancePage from "./features/profile/dashboard/AppearancePage";
 import SettingsPage from "./features/profile/dashboard/SettingsPage";
 import OnboardingProfileSetup from "./features/profile/dashboard/OnboardingProfileSetup";
 import PublicProfileSettings from "./features/profile/dashboard/PublicProfileSettings";
@@ -53,7 +52,6 @@ function App() {
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<StorePage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
-            <Route path="appearance" element={<AppearancePage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="public-profile" element={<PublicProfileSettings />} />
             <Route path="/dashboard/google-connect" element={<GoogleCalendarConnect />} />
